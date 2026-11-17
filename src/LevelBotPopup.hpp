@@ -1,6 +1,8 @@
 #pragma once
 #include <Geode/Geode.hpp>
 
+using namespace geode::prelude;
+
 class LevelBotPopup : public geode::Popup {
 protected:
     geode::TextInput* m_input = nullptr;
