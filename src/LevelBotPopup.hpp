@@ -10,14 +10,20 @@ protected:
     int m_total = 0;
     int m_done = 0;
     int m_failed = 0;
+    int m_attempt = 0;
     bool m_running = false;
+    bool m_waiting = false;
+    float m_waitTime = 0.f;
+    float m_cooldown = 0.f;
 
     bool init();
     void onStart(CCObject*);
     void onStop(CCObject*);
-    void tick(float dt);
+    void update(float dt) override;
+    void handleResult(bool ok);
     void refresh();
 
 public:
+    ~LevelBotPopup();
     static LevelBotPopup* create();
 };
