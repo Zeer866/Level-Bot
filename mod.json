@@ -19,10 +19,12 @@
 			"control": { "input": true, "slider": true }
 		},
 		"objects": {
-	"type": "int",
-	"name": "Objetos por nivel",
-	"default": 200,
-	"min": 20,
-	"max": 30000,
-	"control": { "input": true, "slider": true }
+			"type": "int",
+			"name": "Objetos por nivel",
+			"default": 200,
+			"min": 20,
+			"max": 30000,
+			"control": { "input": true, "slider": true }
+		}
+	}
 }
