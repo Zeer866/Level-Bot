@@ -26,7 +26,7 @@ bool LevelBotPopup::init() {
     m_mainLayer->addChild(info);
 
     m_input = TextInput::create(140.f, "Cantidad", "bigFont.fnt");
-    m_input->setFilter(CommonFilter::Uint);
+    m_input->setCommonFilter(CommonFilter::Uint);
     m_input->setMaxCharCount(4);
     m_input->setString("10");
     m_input->setPosition({size.width / 2, size.height - 90.f});
