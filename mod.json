@@ -1,0 +1,30 @@
+{
+	"geode": "5.11.2",
+	"gd": {
+		"android": "2.2081"
+	},
+	"version": "v1.0.0",
+	"id": "zeer866.levelbot",
+	"name": "Level Bot",
+	"developer": "Zeer866",
+	"description": "Genera niveles automáticamente y los sube a tu GDPS (hasta 1000).",
+	"settings": {
+		"delay": {
+			"type": "int",
+			"name": "Segundos entre subidas",
+			"description": "Espera entre cada nivel. Muchos GDPS limitan las subidas (por ejemplo 1 cada 60 s).",
+			"default": 60,
+			"min": 1,
+			"max": 600,
+			"control": { "input": true, "slider": true }
+		},
+		"objects": {
+			"type": "int",
+			"name": "Objetos por nivel",
+			"default": 200,
+			"min": 20,
+			"max": 2000,
+			"control": { "input": true, "slider": true }
+		}
+	}
+}
