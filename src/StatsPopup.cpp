@@ -64,6 +64,6 @@ void StatsPopup::onApply(CCObject*) {
         gsm->setStat(key, v);
     }
     // Envía las stats nuevas al servidor
-    GameLevelManager::sharedState()->submitUserScore();
+        GameLevelManager::sharedState()->updateUserScore();
     FLAlertLayer::create("Stats", "Stats aplicadas y enviadas al servidor.", "OK")->show();
 }
