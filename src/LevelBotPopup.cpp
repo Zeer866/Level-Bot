@@ -155,6 +155,7 @@ void LevelBotPopup::update(float dt) {
         lb::clearUploadCallback();
         m_status->setString(fmt::format(
             "Terminado: {} subidos, {} fallidos", m_done, m_failed).c_str());
+        FMODAudioEngine::sharedEngine()->playEffect("achievement_01.ogg");
         return;
     }
 
