@@ -1,4 +1,5 @@
 #include "ScriptEngine.hpp"
+#include "BotRunner.hpp"
 #include <Geode/Geode.hpp>
 #include <algorithm>
 #include <random>
@@ -15,9 +16,15 @@ static std::string trim(std::string s) {
 }
 
 static const std::set<std::string> KNOWN = {
-    "decir", "esperar", "poner", "sumar", "azar",
-    "repetir", "fin", "stat", "enviar", "sonido"
+    "decir", "esperar", "poner", "sumar", "restar", "azar",
+    "repetir", "si", "sino", "fin", "funcion", "llamar",
+    "stat", "enviar", "sonido", "nivel", "cuenta"
 };
+
+// Comandos que abren un bloque que se cierra con 'fin'
+static bool opensBlock(const std::string& cmd) {
+    return cmd == "repetir" || cmd == "si" || cmd == "funcion";
+}
 
 int zs::Engine::value(const std::string& tok) {
     if (!tok.empty() && tok[0] == '$') {
@@ -32,12 +39,25 @@ float zs::Engine::number(const std::string& tok) {
     return geode::utils::numFromString<float>(tok).unwrapOr(0.f);
 }
 
+bool zs::Engine::compare(int a, const std::string& op, int b) {
+    if (op == ">") return a > b;
+    if (op == "<") return a < b;
+    if (op == ">=") return a >= b;
+    if (op == "<=") return a <= b;
+    if (op == "==") return a == b;
+    if (op == "!=") return a != b;
+    return false;
+}
+
 bool zs::Engine::load(const std::string& src, std::string& error) {
     m_prog.clear();
     m_vars.clear();
+    m_functions.clear();
     m_loops.clear();
+    m_calls.clear();
     m_pc = 0;
     m_wait = 0.f;
+    m_waitingBot = false;
 
     std::string norm = src;
     std::replace(norm.begin(), norm.end(), '\n', ';');
@@ -73,9 +93,17 @@ bool zs::Engine::load(const std::string& src, std::string& error) {
             while (ts >> tok) in.args.push_back(tok);
         }
 
-        if (in.cmd == "repetir") depth++;
+        if (in.cmd == "funcion") {
+            if (in.args.empty()) {
+                error = fmt::format("Comando {}: 'funcion' necesita un nombre", line);
+                return false;
+            }
+            m_functions[in.args[0]] = m_prog.size() + 1; // apunta al cuerpo
+        }
+
+        if (opensBlock(in.cmd)) depth++;
         if (in.cmd == "fin" && --depth < 0) {
-            error = fmt::format("Comando {}: 'fin' sin 'repetir'", line);
+            error = fmt::format("Comando {}: 'fin' sin bloque que cerrar", line);
             return false;
         }
         m_prog.push_back(in);
@@ -88,10 +116,28 @@ bool zs::Engine::load(const std::string& src, std::string& error) {
     return true;
 }
 
+size_t zs::Engine::findBlockEnd(size_t start) {
+    int depth = 0;
+    size_t i = start;
+    for (; i < m_prog.size(); i++) {
+        if (opensBlock(m_prog[i].cmd)) depth++;
+        if (m_prog[i].cmd == "fin" && --depth == 0) break;
+    }
+    return i; // índice del 'fin' correspondiente
+}
+
 bool zs::Engine::step(float dt, const std::function<void(const std::string&)>& say, std::string& error) {
     if (m_wait > 0.f) {
         m_wait -= dt;
         return true;
+    }
+
+    if (m_waitingBot) {
+        lb::tickLevels(dt);
+        lb::tickAccounts(dt);
+        if (lb::levelsRunning() || lb::accountsRunning()) return true;
+        m_waitingBot = false;
+        m_pc++; // el bot ya terminó, sigue con la siguiente instrucción
     }
 
     static const std::map<std::string, const char*> STATS = {
@@ -133,6 +179,10 @@ bool zs::Engine::step(float dt, const std::function<void(const std::string&)>& s
             if (!need(2)) return false;
             m_vars[in.args[0]] += value(in.args[1]);
             m_pc++;
+        } else if (in.cmd == "restar") {
+            if (!need(2)) return false;
+            m_vars[in.args[0]] -= value(in.args[1]);
+            m_pc++;
         } else if (in.cmd == "azar") {
             if (!need(3)) return false;
             int lo = value(in.args[1]);
@@ -145,26 +195,65 @@ bool zs::Engine::step(float dt, const std::function<void(const std::string&)>& s
             if (!need(1)) return false;
             int n = value(in.args[0]);
             if (n <= 0) {
-                // salta hasta el 'fin' que cierra este bloque
-                int depth = 0;
-                size_t i = m_pc;
-                for (; i < m_prog.size(); i++) {
-                    if (m_prog[i].cmd == "repetir") depth++;
-                    if (m_prog[i].cmd == "fin" && --depth == 0) break;
-                }
-                m_pc = i + 1;
+                m_pc = findBlockEnd(m_pc) + 1;
             } else {
                 m_loops.push_back({m_pc + 1, n});
                 m_pc++;
             }
-        } else if (in.cmd == "fin") {
-            auto& loop = m_loops.back();
-            if (--loop.left > 0) {
-                m_pc = loop.start;
+        } else if (in.cmd == "si") {
+            // formato: si $var OP valor
+            if (!need(3)) return false;
+            bool ok = compare(value(in.args[0]), in.args[1], value(in.args[2]));
+            if (ok) {
+                m_pc++; // entra al bloque normalmente
             } else {
-                m_loops.pop_back();
-                m_pc++;
+                // busca 'sino' al mismo nivel, o el 'fin' si no hay
+                int depth = 0;
+                size_t i = m_pc + 1;
+                size_t jump = 0;
+                for (; i < m_prog.size(); i++) {
+                    if (opensBlock(m_prog[i].cmd)) depth++;
+                    else if (m_prog[i].cmd == "fin") {
+                        if (depth == 0) { jump = i + 1; break; }
+                        depth--;
+                    } else if (m_prog[i].cmd == "sino" && depth == 0) {
+                        jump = i + 1;
+                        break;
+                    }
+                }
+                m_pc = jump ? jump : m_prog.size();
             }
+        } else if (in.cmd == "sino") {
+            // si se llega aquí ejecutando el bloque 'si', salta hasta el 'fin'
+            m_pc = findBlockEnd(m_pc) + 1;
+        } else if (in.cmd == "fin") {
+            if (!m_loops.empty() && m_loops.back().start <= m_pc) {
+                auto& loop = m_loops.back();
+                if (--loop.left > 0) {
+                    m_pc = loop.start;
+                } else {
+                    m_loops.pop_back();
+                    m_pc++;
+                }
+            } else if (!m_calls.empty()) {
+                // fin de una función llamada con 'llamar'
+                m_pc = m_calls.back().returnPc;
+                m_calls.pop_back();
+            } else {
+                m_pc++; // fin de 'si' o de 'funcion' (definición, sin ejecutar su cuerpo)
+            }
+        } else if (in.cmd == "funcion") {
+            // al pasar por su definición de largo, salta todo el cuerpo
+            m_pc = findBlockEnd(m_pc) + 1;
+        } else if (in.cmd == "llamar") {
+            if (!need(1)) return false;
+            auto it = m_functions.find(in.args[0]);
+            if (it == m_functions.end()) {
+                error = fmt::format("Comando {}: funcion '{}' no existe", in.line, in.args[0]);
+                return false;
+            }
+            m_calls.push_back({m_pc + 1});
+            m_pc = it->second;
         } else if (in.cmd == "stat") {
             if (!need(2)) return false;
             auto it = STATS.find(in.args[0]);
@@ -180,6 +269,16 @@ bool zs::Engine::step(float dt, const std::function<void(const std::string&)>& s
         } else if (in.cmd == "sonido") {
             FMODAudioEngine::sharedEngine()->playEffect("achievement_01.ogg");
             m_pc++;
+        } else if (in.cmd == "nivel") {
+            if (!need(1)) return false;
+            lb::runLevels(value(in.args[0]), nullptr);
+            m_waitingBot = true;
+            return true; // no avanza m_pc hasta que termine (ver arriba)
+        } else if (in.cmd == "cuenta") {
+            if (!need(1)) return false;
+            lb::runAccounts(value(in.args[0]), nullptr);
+            m_waitingBot = true;
+            return true;
         }
     }
     return m_pc < m_prog.size();
