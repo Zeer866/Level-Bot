@@ -3,11 +3,11 @@
 	"gd": {
 		"android": "2.2081"
 	},
-	"version": "v1.0.1",
+	"version": "v1.2.0",
 	"id": "zeer866.levelbot",
 	"name": "Level Bot",
 	"developer": "Zeer866",
-	"description": "Genera niveles automáticamente y los sube a tu GDPS (hasta 1000).",
+	"description": "Bot de niveles, editor de stats y bot de cuentas para tu GDPS.",
 	"settings": {
 		"pause": {
 			"type": "float",
@@ -24,6 +24,52 @@
 			"default": 200,
 			"min": 20,
 			"max": 30000,
+			"control": { "input": true, "slider": true }
+		},
+		"name-prefix": {
+			"type": "string",
+			"name": "Prefijo del nombre",
+			"default": "Nivel Auto"
+		},
+		"level-desc": {
+			"type": "string",
+			"name": "Descripción de los niveles",
+			"default": "Generado automáticamente por Level Bot"
+		},
+		"server-url": {
+			"type": "string",
+			"name": "URL de tu GDPS (cuentas)",
+			"description": "Ejemplo: https://tuservidor.com/gdps  (sin / al final)",
+			"default": ""
+		},
+		"acc-prefix": {
+			"type": "string",
+			"name": "Prefijo de usuario (máx. 11)",
+			"default": "Zeer"
+		},
+		"acc-start": {
+			"type": "int",
+			"name": "Número inicial",
+			"default": 1,
+			"min": 1,
+			"max": 100000
+		},
+		"acc-password": {
+			"type": "string",
+			"name": "Contraseña de las cuentas",
+			"default": "Test1234"
+		},
+		"acc-email-domain": {
+			"type": "string",
+			"name": "Dominio del correo",
+			"default": "example.com"
+		},
+		"acc-pause": {
+			"type": "float",
+			"name": "Pausa entre cuentas (segundos)",
+			"default": 1,
+			"min": 0.2,
+			"max": 60,
 			"control": { "input": true, "slider": true }
 		}
 	}
