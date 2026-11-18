@@ -1,7 +1,8 @@
 #pragma once
 #include <Geode/Geode.hpp>
+#include <string>
 
 namespace lb {
-    // Crea y sube un nivel generado. Devuelve false si no hay sesión iniciada.
-    bool uploadGeneratedLevel(int index, unsigned int seed, int objectCount);
+    // Sube un nivel con el string ya generado. Devuelve false si no hay sesión.
+    bool uploadGeneratedLevel(int index, const std::string& levelString, int objectCount);
 }
