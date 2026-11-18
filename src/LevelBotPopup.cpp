@@ -1,7 +1,9 @@
 #include "LevelBotPopup.hpp"
 #include "Uploader.hpp"
+#include "Generator.hpp"
 #include "State.hpp"
 #include <random>
+#include <chrono>
 
 using namespace geode::prelude;
 
@@ -17,6 +19,7 @@ LevelBotPopup* LevelBotPopup::create() {
 
 LevelBotPopup::~LevelBotPopup() {
     lb::clearUploadCallback();
+    if (m_hasNext && m_next.valid()) m_next.wait();
 }
 
 bool LevelBotPopup::init() {
@@ -60,11 +63,26 @@ void LevelBotPopup::refresh() {
     m_status->setString(text.c_str());
 }
 
+void LevelBotPopup::prepareNext() {
+    if (m_hasNext) return;
+    int objects = Mod::get()->getSettingValue<int64_t>("objects");
+    unsigned int seed = std::random_device{}();
+    m_nextObjects = objects;
+    m_next = std::async(std::launch::async, [seed, objects]() {
+        return lb::generateLevel(seed, objects);
+    });
+    m_hasNext = true;
+}
+
 void LevelBotPopup::onStart(CCObject*) {
     if (m_running) return;
     int n = geode::utils::numFromString<int>(m_input->getString()).unwrapOr(0);
     if (n < 1) n = 1;
     if (n > 1000) n = 1000;
+
+    if (m_hasNext && m_next.valid()) m_next.wait();
+    m_hasNext = false;
+    m_current.clear();
 
     m_total = n;
     m_done = 0;
@@ -79,6 +97,7 @@ void LevelBotPopup::onStart(CCObject*) {
         if (m_running && m_waiting) this->handleResult(ok);
     });
 
+    this->prepareNext(); // el primero ya se va generando
     refresh();
     this->scheduleUpdate();
 }
@@ -99,16 +118,17 @@ void LevelBotPopup::handleResult(bool ok) {
     if (ok) {
         m_done++;
         m_attempt = 0;
+        m_current.clear();
         m_cooldown = pause;
     } else {
         m_attempt++;
         if (m_attempt >= 6) {
-            // se rindió con este nivel, pasa al siguiente
             m_failed++;
             m_attempt = 0;
+            m_current.clear();
             m_cooldown = pause;
         } else {
-            // espera creciente antes de reintentar el MISMO nivel
+            // se reintenta el MISMO nivel (m_current se conserva)
             m_cooldown = std::min(3.f * m_attempt, 15.f);
         }
     }
@@ -138,13 +158,20 @@ void LevelBotPopup::update(float dt) {
         return;
     }
 
-    int objects = Mod::get()->getSettingValue<int64_t>("objects");
-    unsigned int seed = std::random_device{}();
-    int index = m_done + m_failed + 1; // no cambia mientras se reintenta
+    // Si no es un reintento, toma el nivel que se preparó en segundo plano
+    if (m_current.empty()) {
+        this->prepareNext();
+        if (m_next.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+        m_current = m_next.get();
+        m_hasNext = false;
+    }
 
-    if (lb::uploadGeneratedLevel(index, seed, objects)) {
+    int index = m_done + m_failed + 1;
+    if (lb::uploadGeneratedLevel(index, m_current, m_nextObjects)) {
         m_waiting = true;
         m_waitTime = 0.f;
+        // mientras el servidor responde, ya se genera el siguiente
+        if (m_done + m_failed + 1 < m_total) this->prepareNext();
     } else {
         FLAlertLayer::create("Level Bot", "Inicia sesion en tu cuenta del GDPS primero.", "OK")->show();
         this->onStop(nullptr);
