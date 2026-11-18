@@ -1,5 +1,7 @@
 #pragma once
 #include <Geode/Geode.hpp>
+#include <future>
+#include <string>
 
 using namespace geode::prelude;
 
@@ -16,11 +18,17 @@ protected:
     float m_waitTime = 0.f;
     float m_cooldown = 0.f;
 
+    std::future<std::string> m_next;
+    bool m_hasNext = false;
+    int m_nextObjects = 0;
+    std::string m_current;
+
     bool init();
     void onStart(CCObject*);
     void onStop(CCObject*);
     void update(float dt) override;
     void handleResult(bool ok);
+    void prepareNext();
     void refresh();
 
 public:
