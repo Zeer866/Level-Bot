@@ -3,11 +3,11 @@
 	"gd": {
 		"android": "2.2081"
 	},
-	"version": "v1.2.0",
+	"version": "v1.3.0",
 	"id": "zeer866.levelbot",
 	"name": "Level Bot",
 	"developer": "Zeer866",
-	"description": "Bot de niveles, editor de stats y bot de cuentas para tu GDPS.",
+	"description": "Bot de niveles, cuentas, editor de stats y scripts para tu GDPS.",
 	"settings": {
 		"pause": {
 			"type": "float",
@@ -35,12 +35,6 @@
 			"type": "string",
 			"name": "Descripción de los niveles",
 			"default": "Generado automáticamente por Level Bot"
-		},
-		"server-url": {
-			"type": "string",
-			"name": "URL de tu GDPS (cuentas)",
-			"description": "Ejemplo: https://tuservidor.com/gdps  (sin / al final)",
-			"default": ""
 		},
 		"acc-prefix": {
 			"type": "string",
