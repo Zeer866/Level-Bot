@@ -56,7 +56,9 @@
 		"acc-email-domain": {
 			"type": "string",
 			"name": "Dominio del correo",
-			"default": "example.com"
+			"description": "Los correos serán usuario@dominio",
+			"default": "gmail.com",
+			"one-of": ["gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "example.com"]
 		},
 		"acc-pause": {
 			"type": "float",
