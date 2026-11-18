@@ -7,6 +7,7 @@ using namespace geode::prelude;
 class StatsPopup : public geode::Popup {
 protected:
     std::vector<std::pair<const char*, geode::TextInput*>> m_fields;
+    CCMenuItemToggler* m_modToggle = nullptr;
 
     bool init();
     void onApply(CCObject*);
