@@ -1,9 +1,9 @@
-#include "StatsPopup.hpp"
+#include "ScriptPopup.hpp"
 
 using namespace geode::prelude;
 
-StatsPopup* StatsPopup::create() {
-    auto ret = new StatsPopup();
+ScriptPopup* ScriptPopup::create() {
+    auto ret = new ScriptPopup();
     if (ret->init()) {
         ret->autorelease();
         return ret;
@@ -12,76 +12,82 @@ StatsPopup* StatsPopup::create() {
     return nullptr;
 }
 
-bool StatsPopup::init() {
-    if (!Popup::init(300.f, 320.f)) return false;
-    this->setTitle("Editor de stats");
+bool ScriptPopup::init() {
+    if (!Popup::init(340.f, 220.f)) return false;
+    this->setTitle("ZeerScript");
 
-    struct Row { const char* label; const char* key; };
-    // Claves de GameStatsManager (si alguna sale cambiada, se ajusta aquí)
-    static const Row rows[] = {
-        {"Estrellas", "6"},
-        {"Diamantes", "13"},
-        {"Lunas", "28"},
-        {"Monedas usuario", "12"},
-        {"Monedas secretas", "8"},
-        {"Demonios", "5"},
-    };
-
-    auto gsm = GameStatsManager::sharedState();
     auto size = m_mainLayer->getContentSize();
-    float y = size.height - 55.f;
 
-    for (auto& r : rows) {
-        auto lbl = CCLabelBMFont::create(r.label, "bigFont.fnt");
-        lbl->setScale(0.4f);
-        lbl->setAnchorPoint({0.f, 0.5f});
-        lbl->setPosition({25.f, y});
-        m_mainLayer->addChild(lbl);
+    auto info = CCLabelBMFont::create("Separa los comandos con ;", "chatFont.fnt");
+    info->setPosition({size.width / 2, size.height - 50.f});
+    m_mainLayer->addChild(info);
 
-        auto input = TextInput::create(110.f, "0", "bigFont.fnt");
-        input->setCommonFilter(CommonFilter::Uint);
-        input->setMaxCharCount(7);
-        input->setString(std::to_string(gsm->getStat(r.key)));
-        input->setPosition({size.width - 85.f, y});
-        m_mainLayer->addChild(input);
+    m_input = TextInput::create(300.f, "repetir 3; decir hola; esperar 1; fin", "chatFont.fnt");
+    m_input->setFilter("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ;$#_.,-!?");
+    m_input->setMaxCharCount(600);
+    m_input->setPosition({size.width / 2, size.height - 85.f});
+    m_mainLayer->addChild(m_input);
 
-        m_fields.push_back({r.key, input});
-        y -= 33.f;
-    }
+    m_status = CCLabelBMFont::create("Listo", "chatFont.fnt");
+    m_status->setPosition({size.width / 2, size.height - 125.f});
+    m_mainLayer->addChild(m_status);
 
-    // --- toggle de moderador ---
-    auto am = GJAccountManager::sharedState();
-    bool isMod = am->m_isElder || am->m_isMod;
-
-    auto onSpr = CCSprite::create("GJ_checkOn_001.png");
-    auto offSpr = CCSprite::create("GJ_checkOff_001.png");
-    m_modToggle = CCMenuItemToggler::create(offSpr, onSpr, this, nullptr);
-    m_modToggle->toggle(isMod);
-    m_modToggle->setPosition({size.width - 55.f, y - 15.f});
-    m_buttonMenu->addChild(m_modToggle);
-
-    auto modLabel = CCLabelBMFont::create("Moderador", "bigFont.fnt");
-    modLabel->setScale(0.4f);
-    modLabel->setAnchorPoint({0.f, 0.5f});
-    modLabel->setPosition({25.f, y - 15.f});
-    m_mainLayer->addChild(modLabel);
-
-    auto apply = CCMenuItemSpriteExtra::create(
-        ButtonSprite::create("Aplicar"), this, menu_selector(StatsPopup::onApply));
-    apply->setPosition({size.width / 2, 30.f});
-    m_buttonMenu->addChild(apply);
+    auto run = CCMenuItemSpriteExtra::create(
+        ButtonSprite::create("Ejecutar"), this, menu_selector(ScriptPopup::onRun));
+    auto stop = CCMenuItemSpriteExtra::create(
+        ButtonSprite::create("Parar"), this, menu_selector(ScriptPopup::onStop));
+    auto example = CCMenuItemSpriteExtra::create(
+        ButtonSprite::create("Ejemplo"), this, menu_selector(ScriptPopup::onExample));
+    run->setPosition({size.width / 2 - 100.f, 35.f});
+    stop->setPosition({size.width / 2, 35.f});
+    example->setPosition({size.width / 2 + 100.f, 35.f});
+    m_buttonMenu->addChild(run);
+    m_buttonMenu->addChild(stop);
+    m_buttonMenu->addChild(example);
 
     return true;
 }
 
-void StatsPopup::onApply(CCObject*) {
-    auto gsm = GameStatsManager::sharedState();
-    for (auto& [key, input] : m_fields) {
-        int v = geode::utils::numFromString<int>(input->getString()).unwrapOr(0);
-        gsm->setStat(key, v);
-    }
+void ScriptPopup::onExample(CCObject*) {
+    m_input->setString(
+        "poner n 0; repetir 3; sumar n 1; si $n >= 2; decir ya casi; sino; decir faltan; fin; fin; "
+        "nivel 5; decir listo; sonido");
+}
 
-    auto am = GJAccountManager::sharedState();
-    bool wantMod = m_modToggle->isOn();
-    am->m_isMod = wantMod;
-    am->m_isElder = wantMod;
+void ScriptPopup::finish(const std::string& msg) {
+    m_running = false;
+    this->unscheduleUpdate();
+    m_status->setString(msg.c_str());
+}
+
+void ScriptPopup::onRun(CCObject*) {
+    if (m_running) return;
+    std::string error;
+    if (!m_engine.load(m_input->getString(), error)) {
+        m_status->setString(error.c_str());
+        return;
+    }
+    m_running = true;
+    m_status->setString("Ejecutando...");
+    this->scheduleUpdate();
+}
+
+void ScriptPopup::onStop(CCObject*) {
+    if (m_running) this->finish("Detenido");
+}
+
+void ScriptPopup::update(float dt) {
+    if (!m_running) return;
+
+    std::string error;
+    bool alive = m_engine.step(dt, [this](const std::string& s) {
+        m_status->setString(s.c_str());
+    }, error);
+
+    if (!error.empty()) {
+        this->finish(error);
+    } else if (!alive) {
+        m_running = false;
+        this->unscheduleUpdate();
+    }
+}
