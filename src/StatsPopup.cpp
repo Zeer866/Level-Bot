@@ -17,7 +17,6 @@ bool StatsPopup::init() {
     this->setTitle("Editor de stats");
 
     struct Row { const char* label; const char* key; };
-    // Claves de GameStatsManager (si alguna sale cambiada, se ajusta aquí)
     static const Row rows[] = {
         {"Estrellas", "6"},
         {"Diamantes", "13"},
@@ -63,7 +62,6 @@ void StatsPopup::onApply(CCObject*) {
         int v = geode::utils::numFromString<int>(input->getString()).unwrapOr(0);
         gsm->setStat(key, v);
     }
-    // Envía las stats nuevas al servidor
-        GameLevelManager::sharedState()->updateUserScore();
+    GameLevelManager::sharedState()->updateUserScore();
     FLAlertLayer::create("Stats", "Stats aplicadas y enviadas al servidor.", "OK")->show();
 }
