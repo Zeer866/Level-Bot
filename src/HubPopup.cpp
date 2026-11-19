@@ -3,6 +3,7 @@
 #include "AccountBotPopup.hpp"
 #include "StatsPopup.hpp"
 #include "ScriptPopup.hpp"
+#include "RatePopup.hpp"
 
 using namespace geode::prelude;
 
@@ -17,7 +18,7 @@ HubPopup* HubPopup::create() {
 }
 
 bool HubPopup::init() {
-    if (!Popup::init(360.f, 250.f, "GJ_square02.png")) return false;
+    if (!Popup::init(360.f, 320.f, "GJ_square02.png")) return false;
     this->setTitle("Level Bot");
 
     auto size = m_mainLayer->getContentSize();
@@ -36,7 +37,7 @@ bool HubPopup::init() {
         m_buttonMenu->addChild(btn);
 
         auto lbl = CCLabelBMFont::create(desc, "chatFont.fnt");
-        lbl->setScale(0.75f);
+        lbl->setScale(0.7f);
         lbl->setOpacity(190);
         lbl->setPosition({x, y - 33.f});
         m_mainLayer->addChild(lbl);
@@ -54,8 +55,10 @@ bool HubPopup::init() {
         [] { StatsPopup::create()->show(); });
     addCard("Scripts", "Programa con ZeerScript", "GJ_button_04.png", cx + 85.f, top - row,
         [] { ScriptPopup::create()->show(); });
+    addCard("Likes", "Dale like o dislike a un nivel", "GJ_button_05.png", cx, top - row * 2,
+        [] { RatePopup::create()->show(); });
 
-    auto ver = CCLabelBMFont::create("v1.3.0 - Zeer866", "chatFont.fnt");
+    auto ver = CCLabelBMFont::create("v1.4.0 - Zeer866", "chatFont.fnt");
     ver->setScale(0.6f);
     ver->setOpacity(120);
     ver->setPosition({size.width / 2, 14.f});
