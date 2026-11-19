@@ -11,6 +11,8 @@ protected:
     float m_baseScale = 1.f;
     bool m_dragging = false;
 
+    static FloatingButton* s_instance;
+
     bool init() override;
     void registerWithTouchDispatcher() override;
     bool ccTouchBegan(CCTouch* touch, CCEvent* event) override;
@@ -20,5 +22,11 @@ protected:
     void release();
 
 public:
+    ~FloatingButton();
     static FloatingButton* create();
+
+    static void setTint(int r, int g, int b);
+    static void setButtonScale(float s);
+    static void setButtonPos(float fx, float fy);
+    static void resetButton();
 };
