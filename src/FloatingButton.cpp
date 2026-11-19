@@ -120,7 +120,7 @@ void FloatingButton::ccTouchCancelled(CCTouch*, CCEvent*) {
 void FloatingButton::setTint(int r, int g, int b) {
     if (!s_instance || !s_instance->m_icon) return;
     if (auto rgba = dynamic_cast<CCRGBAProtocol*>(s_instance->m_icon)) {
-        rgba->setColor({
+        rgba->setColor(ccColor3B{
             static_cast<GLubyte>(std::clamp(r, 0, 255)),
             static_cast<GLubyte>(std::clamp(g, 0, 255)),
             static_cast<GLubyte>(std::clamp(b, 0, 255))
@@ -157,7 +157,7 @@ void FloatingButton::resetButton() {
     if (s_instance && s_instance->m_icon) {
         auto win = CCDirector::sharedDirector()->getWinSize();
         if (auto rgba = dynamic_cast<CCRGBAProtocol*>(s_instance->m_icon)) {
-            rgba->setColor({255, 255, 255});
+            rgba->setColor(ccColor3B{255, 255, 255});
         }
         s_instance->m_icon->setScale(g_iconBaseScale);
         s_instance->m_baseScale = g_iconBaseScale;
