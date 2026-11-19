@@ -3,11 +3,11 @@
 	"gd": {
 		"android": "2.2081"
 	},
-	"version": "v1.3.0",
+	"version": "v1.4.0",
 	"id": "zeer866.levelbot",
 	"name": "Level Bot",
 	"developer": "Zeer866",
-	"description": "Bot de niveles, cuentas, editor de stats y scripts para tu GDPS.",
+	"description": "Bot de niveles, cuentas, editor de stats, likes/dislikes y scripts para tu GDPS.",
 	"settings": {
 		"pause": {
 			"type": "float",
@@ -63,6 +63,14 @@
 		"acc-pause": {
 			"type": "float",
 			"name": "Pausa entre cuentas (segundos)",
+			"default": 1,
+			"min": 0.2,
+			"max": 60,
+			"control": { "input": true, "slider": true }
+		},
+		"rate-pause": {
+			"type": "float",
+			"name": "Pausa entre votos (segundos)",
 			"default": 1,
 			"min": 0.2,
 			"max": 60,
