@@ -1,8 +1,15 @@
 #include "FloatingButton.hpp"
 #include "HubPopup.hpp"
 #include <filesystem>
+#include <algorithm>
 
 using namespace geode::prelude;
+
+FloatingButton* FloatingButton::s_instance = nullptr;
+
+namespace {
+    float g_iconBaseScale = 1.f; // escala del ícono tal como se crea, sin multiplicador
+}
 
 FloatingButton* FloatingButton::create() {
     auto ret = new FloatingButton();
@@ -14,18 +21,21 @@ FloatingButton* FloatingButton::create() {
     return nullptr;
 }
 
+FloatingButton::~FloatingButton() {
+    if (s_instance == this) s_instance = nullptr;
+}
+
 bool FloatingButton::init() {
     if (!CCLayer::init()) return false;
 
     auto win = CCDirector::sharedDirector()->getWinSize();
 
-    // Intenta cargar tu logo; si no está en resources/, usa un botón verde redondo
     CCNode* icon = nullptr;
     auto path = Mod::get()->getResourcesDir() / "botlogo.png";
     std::error_code ec;
     if (std::filesystem::exists(path, ec)) {
         if (auto spr = CCSprite::create(path.string().c_str())) {
-            spr->setScale(0.19f); // 336 px * 0.19 = unas 64 unidades
+            spr->setScale(0.19f);
             icon = spr;
         }
     }
@@ -38,6 +48,10 @@ bool FloatingButton::init() {
     }
 
     m_icon = icon;
+    g_iconBaseScale = icon->getScale(); // guarda la escala original, antes de cualquier multiplicador
+
+    float scaleMult = Mod::get()->getSavedValue<float>("btn-scale-mult", 1.f);
+    icon->setScale(g_iconBaseScale * scaleMult);
     m_baseScale = icon->getScale();
 
     float fx = Mod::get()->getSavedValue<float>("btn-fx", 0.06f);
@@ -46,6 +60,7 @@ bool FloatingButton::init() {
     this->addChild(icon);
 
     this->setTouchEnabled(true);
+    s_instance = this;
     return true;
 }
 
@@ -89,7 +104,6 @@ void FloatingButton::ccTouchEnded(CCTouch*, CCEvent*) {
     this->release();
 
     if (m_dragging) {
-        // guarda la posición como porcentaje de la pantalla
         auto win = CCDirector::sharedDirector()->getWinSize();
         auto pos = m_icon->getPosition();
         Mod::get()->setSavedValue<float>("btn-fx", pos.x / win.width);
@@ -101,4 +115,48 @@ void FloatingButton::ccTouchEnded(CCTouch*, CCEvent*) {
 
 void FloatingButton::ccTouchCancelled(CCTouch*, CCEvent*) {
     this->release();
+}
+
+void FloatingButton::setTint(int r, int g, int b) {
+    if (!s_instance || !s_instance->m_icon) return;
+    s_instance->m_icon->setColor({
+        static_cast<GLubyte>(std::clamp(r, 0, 255)),
+        static_cast<GLubyte>(std::clamp(g, 0, 255)),
+        static_cast<GLubyte>(std::clamp(b, 0, 255))
+    });
+}
+
+void FloatingButton::setButtonScale(float s) {
+    if (!s_instance || !s_instance->m_icon) return;
+    s = std::clamp(s, 0.3f, 3.f);
+
+    float newScale = g_iconBaseScale * s;
+    s_instance->m_icon->setScale(newScale);
+    s_instance->m_baseScale = newScale;
+
+    Mod::get()->setSavedValue<float>("btn-scale-mult", s);
+}
+
+void FloatingButton::setButtonPos(float fx, float fy) {
+    if (!s_instance || !s_instance->m_icon) return;
+    fx = std::clamp(fx, 0.f, 1.f);
+    fy = std::clamp(fy, 0.f, 1.f);
+    auto win = CCDirector::sharedDirector()->getWinSize();
+    s_instance->m_icon->setPosition({win.width * fx, win.height * fy});
+    Mod::get()->setSavedValue<float>("btn-fx", fx);
+    Mod::get()->setSavedValue<float>("btn-fy", fy);
+}
+
+void FloatingButton::resetButton() {
+    Mod::get()->setSavedValue<float>("btn-fx", 0.06f);
+    Mod::get()->setSavedValue<float>("btn-fy", 0.62f);
+    Mod::get()->setSavedValue<float>("btn-scale-mult", 1.f);
+
+    if (s_instance && s_instance->m_icon) {
+        auto win = CCDirector::sharedDirector()->getWinSize();
+        s_instance->m_icon->setColor({255, 255, 255});
+        s_instance->m_icon->setScale(g_iconBaseScale);
+        s_instance->m_baseScale = g_iconBaseScale;
+        s_instance->m_icon->setPosition({win.width * 0.06f, win.height * 0.62f});
+    }
 }
