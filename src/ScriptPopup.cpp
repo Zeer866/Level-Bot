@@ -85,8 +85,3 @@ void StatsPopup::onApply(CCObject*) {
     bool wantMod = m_modToggle->isOn();
     am->m_isMod = wantMod;
     am->m_isElder = wantMod;
-
-    // Envía stats y bandera de mod al servidor
-    GameLevelManager::sharedState()->updateUserScore();
-    FLAlertLayer::create("Stats", "Stats y permisos aplicados y enviados al servidor.", "OK")->show();
-}
